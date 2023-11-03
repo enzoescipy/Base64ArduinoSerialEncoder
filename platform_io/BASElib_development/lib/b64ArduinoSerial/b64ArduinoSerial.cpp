@@ -3,12 +3,26 @@
 #include "string.h"
 #include "math.h"
 
+/// debuging functions
+
+
 void byteArrSimplePrint(uint8_t byteArr[], int len ) {
   for (int i = 0; i < len; i++) {
   Serial.print(byteArr[i], BIN);
   Serial.print("  ");
   }
 }
+
+void debugConsole(String description, String variable) {
+  Serial.println(description + "::" + variable);
+}
+
+void debugLineBreak() {
+  Serial.println();
+  Serial.println();
+}
+
+
 
 // convert the ascii_char to the corresponding b64 symbol index.
 // Return:
@@ -41,7 +55,6 @@ int8_t asciiCharToB64Index(char ascii_char) {
 //  result = -1 : unidentified b64. (wrong input)
 char b64ByteToAsciiSymbol(uint8_t b64_char) {
   char result = b64_char;
-  Serial.println(result, DEC);
   // Serial.println(String(result) + "asciiOriginal");
   if (0 <= b64_char && b64_char < 26) {
     result += 65;
@@ -98,30 +111,31 @@ BASE64::BASE64(const char ascii_string[], unsigned int b64_length) {
     const int8_t ascii_to_b64 = asciiCharToB64Index(target_char);
     // Serial.println(ascii_to_b64);
     if (ascii_to_b64 < 0) {
-      // exception handles
+      // exception handling
       _fault_control();
       return;
+    } 
+    
+    const uint8_t b64_index = ascii_to_b64;
+    // convert b64_index to the bit form.
+    // however, b64 is 6bit while byte is 8bit.
+    // so, stack b64 from last index of array.
+
+    // first, put the b64 symbol bits into the stored_bits.
+    const uint8_t b64_combined = stored_bits | (b64_index << stored_length);
+
+    stored_length += 6;
+    if (stored_length < 8) {
+      stored_bits = b64_combined;
     } else {
-      const uint8_t b64_index = ascii_to_b64;
-      // convert b64_index to the bit form.
-      // however, b64 is 6bit while byte is 8bit.
-      // so, stack b64 from last index of array.
-
-      // first, put the b64 symbol bits into the stored_bits.
-      const uint8_t b64_combined = stored_bits | (b64_index << stored_length);
-
-      stored_length += 6;
-      if (stored_length < 8) {
-        stored_bits = b64_combined;
-      } else {
-        // check if << left shift operator overflow then the digits vanish or not?
-        // -> yes, vanish.
-        stored_length -= 8;
-        _byteArr[byteArr_current_focus] = b64_combined;
-        stored_bits = b64_index >> (6 - stored_length);
-        byteArr_current_focus--;
-      }
+      // check if << left shift operator overflow then the digits vanish or not?
+      // -> yes, vanish.
+      stored_length -= 8;
+      _byteArr[byteArr_current_focus] = b64_combined;
+      stored_bits = b64_index >> (6 - stored_length);
+      byteArr_current_focus--;
     }
+  
   }
 
   if (stored_length > 0) {
@@ -150,21 +164,15 @@ String BASE64::b64_symbolize() {
   int stored_length = 0;
   const uint8_t b64_mask = 0x3F;
   for (int i = 0; i < len; i ++) {
-    Serial.println();
     const uint8_t target_char = _byteArr[byteArr_current_focus];
     if (stored_length < 6) {
       const char masked = ((target_char << stored_length) | stored_bits) & b64_mask ;
-      Serial.println(target_char, BIN);
-      Serial.println(stored_bits, BIN);
-      Serial.println(masked, BIN);
       result += String(b64ByteToAsciiSymbol( masked ));
       stored_length = 2 + stored_length;
       stored_bits = target_char >> (8 - stored_length);
       byteArr_current_focus--;
     } else {
       const char masked = stored_bits & b64_mask ;
-      Serial.println(stored_bits, BIN);
-      Serial.println(masked, BIN);
       result += String(b64ByteToAsciiSymbol(masked));
       stored_length = stored_length - 6;
       stored_bits = stored_bits >> 6;
@@ -199,44 +207,51 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
     byteArr_past_focus--;
   }
 
+  // debugConsole("_ending_position",String(_ending_position));
+  // debugConsole("byteArr_current_focus",String(byteArr_current_focus));
+  // debugConsole("byteArr_past_focus",String(byteArr_past_focus));
+
+  // re-assign the stored_bits and its stored_length
+  uint8_t stored_bits = byteArrBefore[byteArr_past_focus];
+  // byteArr_current_focus--;
+
+  debugLineBreak() ;
+
   // free the array before
   free(byteArrBefore);
 
-  // re-assign the stored_bits and its stored_length
-  uint8_t stored_bits = byteArrBefore[byteArr_current_focus];
-  byteArr_current_focus--;
   int stored_length = _stored_length;
   for (unsigned int i = 0; i < extender_length; i++) {
     const char target_char = extender[i];
     const int8_t ascii_to_b64 = asciiCharToB64Index(target_char);
+
     if (ascii_to_b64 < 0) {
+      // exception handling
       _fault_control();
-      Serial.print(i); //debug
-      Serial.print(" ,"); //debug
       return;
+    }
+
+
+    // debugConsole("i",String(i));
+    // debugConsole("ascii_to_b64",String(ascii_to_b64, DEC));
+    const uint8_t b64_index = ascii_to_b64;
+    // convert b64_index to the bit form.
+    // however, b64 is 6bit while byte is 8bit.
+    // so, stack b64 from last index of array.
+
+    // first, put the b64 symbol bits into the stored_bits.
+    const uint8_t b64_combined = stored_bits | (b64_index << stored_length);
+
+    stored_length += 6;
+    if (stored_length < 8) {
+      stored_bits = b64_combined;
     } else {
-      Serial.print(i); //debug
-      Serial.print(" ,"); //debug
-      Serial.println(ascii_to_b64, BIN); // debug
-      const uint8_t b64_index = ascii_to_b64;
-      // convert b64_index to the bit form.
-      // however, b64 is 6bit while byte is 8bit.
-      // so, stack b64 from last index of array.
-
-      // first, put the b64 symbol bits into the stored_bits.
-      const uint8_t b64_combined = stored_bits | (b64_index << stored_length);
-
-      stored_length += 6;
-      if (stored_length < 8) {
-        stored_bits = b64_combined;
-      } else {
-        // check if << left shift operator overflow then the digits vanish or not?
-        // -> yes, vanish.
-        stored_length -= 8;
-        _byteArr[byteArr_current_focus] = b64_combined;
-        stored_bits = b64_index >> (6 - stored_length);
-        byteArr_current_focus--;
-      }
+      // check if << left shift operator overflow then the digits vanish or not?
+      // -> yes, vanish.
+      stored_length -= 8;
+      _byteArr[byteArr_current_focus] = b64_combined;
+      stored_bits = b64_index >> (6 - stored_length);
+      byteArr_current_focus--;
     }
   }
 
@@ -265,12 +280,12 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
 void BASE64::debug_byteArr() {
   Serial.println();
   Serial.println("||DEBUG||");
-  Serial.println(_len);
-  Serial.println(_byteArrLen);
+  // debugConsole("_len",String(_len));
+  // debugConsole("_byteArrLen",String(_byteArrLen));
   byteArrSimplePrint(_byteArr, _byteArrLen);
   Serial.println("||spec||");
-  Serial.println(_ending, BIN);
-  Serial.println(_ending_position);
-  Serial.println(_stored_length);
+  // debugConsole("_ending",String(_ending, BIN));
+  // debugConsole("_ending_position",String(_ending_position));
+  // debugConsole("_stored_length",String(_stored_length));
   Serial.println();
 }

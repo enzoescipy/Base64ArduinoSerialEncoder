@@ -12,10 +12,13 @@ void DEBUG() {
   //   base64.debug_byteArr();
   // }
 
-  BASE64 base64 = BASE64("aAbB+",5);
+  BASE64 base64 = BASE64("aAbB2ks0dE+",11);
+  // base64.debug_byteArr();
+  Serial.println(base64.b64_symbolize());
+
   base64.extend("1234567890",10);
   Serial.println(base64.b64_symbolize());
-  base64.debug_byteArr();
+  // base64.debug_byteArr();
 
 }
 
