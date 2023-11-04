@@ -9,6 +9,7 @@ class BASE64 {
     void extend(const char extender[], unsigned int b64_length);
     void debug_byteArr(); // comment this section when production
     String b64_symbolize(); // comment this section when production
+    void serial_exhaust_bytes();
   private:
     // initialize with the error signs.
     void _fault_control();
@@ -27,7 +28,9 @@ class BASE64 {
     int _stored_length;
 };
 
+// class B64Serial {
 
+// }
 
 
 
