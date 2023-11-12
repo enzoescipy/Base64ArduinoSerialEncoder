@@ -7,6 +7,7 @@ class BASE64 {
   public:
     BASE64(const char ascii_string[], unsigned int b64_length );
     void extend(const char extender[], unsigned int b64_length);
+    void extend_float(float number);
     void debug_byteArr(); // comment this section when production
     String b64_symbolize(); // comment this section when production
     void serial_exhaust_bytes();

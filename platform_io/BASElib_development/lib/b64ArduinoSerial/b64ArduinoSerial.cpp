@@ -53,6 +53,7 @@ int8_t asciiCharToB64Index(char ascii_char) {
 }
 
 
+
 // convert the b64 symbol to the corresponding ascii_char symbol index.
 // Return:
 //  0 <= result < 127 : ascii char
@@ -176,33 +177,8 @@ BASE64::BASE64(const char ascii_string[], unsigned int b64_length) {
   }
 }
 
-String BASE64::b64_symbolize() {
-  int len = _len;
-  int byteArrLen = _byteArrLen;
-  int byteArr_current_focus = byteArrLen - 1;
-  String result = "";
 
-  uint8_t stored_bits = 0x00;
-  int stored_length = 0;
-  const uint8_t b64_mask = 0x3F;
-  for (int i = 0; i < len; i ++) {
-    const uint8_t target_char = _byteArr[byteArr_current_focus];
-    if (stored_length < 6) {
-      const char masked = ((target_char << stored_length) | stored_bits) & b64_mask ;
-      result += String(b64ByteToAsciiSymbol( masked ));
-      stored_length = 2 + stored_length;
-      stored_bits = target_char >> (8 - stored_length);
-      byteArr_current_focus--;
-    } else {
-      const char masked = stored_bits & b64_mask ;
-      result += String(b64ByteToAsciiSymbol(masked));
-      stored_length = stored_length - 6;
-      stored_bits = stored_bits >> 6;
-    }
-  }
-  return result;
-}
-
+ 
 void BASE64::extend(const char extender[], unsigned int extender_length) {
   // re-calculate the byteArrLen, and move pointer to the temporary variable
   _len += extender_length;
@@ -237,7 +213,7 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
   uint8_t stored_bits = byteArrBefore[byteArr_past_focus];
   // byteArr_current_focus--;
 
-  debugLineBreak() ;
+  // debugLineBreak() ;
 
   // free the array before
   free(byteArrBefore);
@@ -292,8 +268,95 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
     _byteArr[byteArr_current_focus] = 0x00;
     byteArr_current_focus--;
   }
+}
+
+void BASE64::extend_float(float number) {
+  union float_b64 { // warning : byte ordering is little-endian!
+    uint8_t byte_arr[4];
+    float number;
+  } b64_float;
 
 
+  b64_float.number = number;
+  // //debug
+  // for (int i = 0; i < 4; i++) {
+  //   Serial.println(b64_float.byte_arr[i], BIN);
+  // }
+  // //debug
+
+  // re-calculate the byteArrLen, and move pointer to the temporary variable
+  _len += 6;
+  int byteArrLenBefore = _byteArrLen;
+  uint8_t *byteArrBefore =_byteArr;
+
+  const int base64_byte_div = _len * 6 / 8;
+  if ((_len * 6 % 8) != 0) {
+    _byteArrLen = base64_byte_div + 1;
+  } else {
+    _byteArrLen = base64_byte_div;
+  }
+
+  // re-assign the pointer
+  _byteArr = (uint8_t *)malloc(sizeof(uint8_t) * _byteArrLen);
+
+  // put the byteArrBefore to the _byteArr. however, the ending byte will not applied.
+  int byteArr_past_focus = byteArrLenBefore - 1;
+  int byteArr_current_focus = _byteArrLen - 1;
+  for (int i = 0; i < byteArrLenBefore - _ending_position - 1; i++) {
+    _byteArr[byteArr_current_focus] = byteArrBefore[byteArr_past_focus];
+    byteArr_current_focus--;
+    byteArr_past_focus--;
+  }
+
+  // free the byteArrBefore.
+  // append the float bytes.
+  uint8_t stored_bits = byteArrBefore[byteArr_past_focus];
+  free(byteArrBefore);
+
+  for (unsigned int i = 0; i < 4; i++) {
+    const uint8_t target_byte = b64_float.byte_arr[i];
+
+    // first, put the b64 symbol bits into the stored_bits.
+    const uint8_t b64_combined = stored_bits | (target_byte << _stored_length);
+
+    // check if << left shift operator overflow then the digits vanish or not?
+    // -> yes, vanish.
+    _byteArr[byteArr_current_focus] = b64_combined;
+    stored_bits = target_byte >> (8 - _stored_length);
+    byteArr_current_focus--;
+  }
+
+  // we need to add the 4 zero bit to the end because of the base64 convention.
+  const uint8_t target_byte = 0x00;
+  const uint8_t b64_combined = stored_bits | (target_byte << _stored_length);
+
+  _stored_length += 4;
+  if (_stored_length < 8) {
+    stored_bits = b64_combined;
+  } else {
+    // check if << left shift operator overflow then the digits vanish or not?
+    // -> yes, vanish.
+    _stored_length -= 8;
+    _byteArr[byteArr_current_focus] = b64_combined;
+    stored_bits = 0x00;
+    byteArr_current_focus--;
+  }
+
+
+  if (_stored_length > 0) {
+    _byteArr[byteArr_current_focus] = stored_bits;
+    _ending_position = byteArr_current_focus;
+    byteArr_current_focus--;
+  } else {
+    _ending_position = byteArr_current_focus + 1;
+  }
+  _ending = stored_bits;
+
+  // exhaust the left byteArr_current_focus until zero, filing 0x00 for each iteration.
+  while (byteArr_current_focus >= 0) {
+    _byteArr[byteArr_current_focus] = 0x00;
+    byteArr_current_focus--;
+  }
 }
 
 
@@ -318,4 +381,31 @@ void BASE64::debug_byteArr() {
   Serial.println();
 }
 
+
+String BASE64::b64_symbolize() {
+  int len = _len;
+  int byteArrLen = _byteArrLen;
+  int byteArr_current_focus = byteArrLen - 1;
+  String result = "";
+
+  uint8_t stored_bits = 0x00;
+  int stored_length = 0;
+  const uint8_t b64_mask = 0x3F;
+  for (int i = 0; i < len; i ++) {
+    const uint8_t target_char = _byteArr[byteArr_current_focus];
+    if (stored_length < 6) {
+      const char masked = ((target_char << stored_length) | stored_bits) & b64_mask ;
+      result += String(b64ByteToAsciiSymbol( masked ));
+      stored_length = 2 + stored_length;
+      stored_bits = target_char >> (8 - stored_length);
+      byteArr_current_focus--;
+    } else {
+      const char masked = stored_bits & b64_mask ;
+      result += String(b64ByteToAsciiSymbol(masked));
+      stored_length = stored_length - 6;
+      stored_bits = stored_bits >> 6;
+    }
+  }
+  return result;
+}
 

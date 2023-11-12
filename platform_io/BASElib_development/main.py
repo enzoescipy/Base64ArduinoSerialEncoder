@@ -4,14 +4,13 @@ import base64
 import struct
 
 
-py_serial = serial.Serial(port='COM7', baudrate=9600,)
 
 
 class SerialQueueB64:
     def __init__(self, on_decode) -> None:
-      self.mainstring = b""
-      self.decoded_string = ""
-      self.on_decode = on_decode
+        self.mainstring = b"" 
+        self.decoded_string = ""
+        self.on_decode = on_decode
 
     
     def __str__(self) -> str:
@@ -23,13 +22,14 @@ class SerialQueueB64:
         """
         rid_string = self.mainstring[-3:]
         self.mainstring = self.mainstring[:-3]
+
         for c in rid_string:
             print(bin(c))
         encoded_str = base64.b64encode(rid_string).decode('ascii')
         self.decoded_string += encoded_str[::-1]
 
         self.on_decode(self.decoded_string);
-
+    
     def push(self, stuff):
         """
         put byte string in the queue
@@ -69,34 +69,37 @@ class SerialQueueBIN:
         # self.mainstring += stuff
 
 
-def base64DecodeFloat(b64):
+    
+
+def base64DecodeFloatDebug(b64):
     # validation of param, which base64 must have the 6-letter.
     if len(b64) != 6 or type(b64) != type(''):
         return -1
-    b64 = b64 + "AA"
-    s = bytearray(base64.b64decode(b64)[:-2])
+    b64 = b64[::-1]
+    b64 = "AA" + b64
+    s = bytearray(base64.b64decode(b64)[-4:])
+    print(s)
     s.reverse()
     p =  struct.unpack('f', s)
     print(p)
 
-def base64IncodeFloat(floater):
-    # validation of params
-    if type(floater) != type(0.0):
-        return -1
-    p = bytearray(struct.pack('f', floater))
-    p.reverse()
-    s = base64.b64encode(p)
-    print(s[:-2])
+# def base64IncodeFloatDebug(floater):
+#     # validation of params
+#     if type(floater) != type(0.0):
+#         return -1
+#     p = bytearray(struct.pack('f', floater))
+#     p.reverse()
+#     s = base64.b64encode(p)
+#     print(s[:-2])
+
+# py_serial = serial.Serial(port='COM6', baudrate=9600,)
 
 
-
-serial_buffer_queue = SerialQueueB64(on_decode=print)
+# serial_buffer_queue = SerialQueueB64(on_decode=print)
 # serial_buffer_queue = SerialQueueBIN(on_decode=print)
 
-#sample
-print(base64DecodeFloat("P441Pw"))
-print(base64IncodeFloat(1.111))
-#sample
+
+base64DecodeFloatDebug("/Ujj/A")
 
 ## code firing section
 
@@ -109,26 +112,26 @@ print(base64IncodeFloat(1.111))
 # time.sleep(1) 
 
 
-while True:
-    time.sleep(0.1)
-    # put the serial buffer-ed strings in the queue.
-    if (py_serial.readable()):
-        response = py_serial.read_all()
-        serial_buffer_queue.push(response)
+# while True:
+#     time.sleep(0.1)
+#     # put the serial buffer-ed strings in the queue.
+#     if (py_serial.readable()):
+#         response = py_serial.read_all()
+#         serial_buffer_queue.push(response)
     
 
 
-    ## for b64 queue
-    # pop 3 byte inside buffer then convert them to 4 base64 char s.  
-    # then save 4 base64 chars to base64 buffer.
-    encode_iter = len(serial_buffer_queue.mainstring)
-    encode_iter = int((encode_iter - encode_iter % 3) / 3)
-    for i in range(encode_iter) :
-        serial_buffer_queue.pop3()
+#     ## for b64 queue
+#     # pop 3 byte inside buffer then convert them to 4 base64 char s.  
+#     # then save 4 base64 chars to base64 buffer.
+#     encode_iter = len(serial_buffer_queue.mainstring)
+#     encode_iter = int((encode_iter - encode_iter % 3) / 3)
+#     for i in range(encode_iter) :
+#         serial_buffer_queue.pop3()
 
-    # ### for bin queue
-    # # pop all byte then convert them into the bin form.
-    # serial_buffer_queue.pop()
+#     # ### for bin queue
+#     # # pop all byte then convert them into the bin form.
+#     # serial_buffer_queue.pop()
 
 
 
