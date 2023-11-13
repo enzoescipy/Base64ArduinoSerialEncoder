@@ -23,13 +23,10 @@ class SerialQueueB64:
         rid_string = self.mainstring[-3:]
         self.mainstring = self.mainstring[:-3]
 
-        for c in rid_string:
-            print(bin(c))
         encoded_str = base64.b64encode(rid_string).decode('ascii')
         self.decoded_string += encoded_str[::-1]
 
         self.on_decode(self.decoded_string);
-    
     def push(self, stuff):
         """
         put byte string in the queue
@@ -92,14 +89,14 @@ def base64DecodeFloatDebug(b64):
 #     s = base64.b64encode(p)
 #     print(s[:-2])
 
-# py_serial = serial.Serial(port='COM6', baudrate=9600,)
+py_serial = serial.Serial(port='COM6', baudrate=9600,)
 
 
-# serial_buffer_queue = SerialQueueB64(on_decode=print)
+serial_buffer_queue = SerialQueueB64(on_decode=print)
 # serial_buffer_queue = SerialQueueBIN(on_decode=print)
 
 
-base64DecodeFloatDebug("/Ujj/A")
+# base64DecodeFloatDebug("/Ujj/A")
 
 ## code firing section
 
@@ -112,26 +109,26 @@ base64DecodeFloatDebug("/Ujj/A")
 # time.sleep(1) 
 
 
-# while True:
-#     time.sleep(0.1)
-#     # put the serial buffer-ed strings in the queue.
-#     if (py_serial.readable()):
-#         response = py_serial.read_all()
-#         serial_buffer_queue.push(response)
+while True:
+    time.sleep(0.1)
+    # put the serial buffer-ed strings in the queue.
+    if (py_serial.readable()):
+        response = py_serial.read_all()
+        serial_buffer_queue.push(response)
     
 
 
-#     ## for b64 queue
-#     # pop 3 byte inside buffer then convert them to 4 base64 char s.  
-#     # then save 4 base64 chars to base64 buffer.
-#     encode_iter = len(serial_buffer_queue.mainstring)
-#     encode_iter = int((encode_iter - encode_iter % 3) / 3)
-#     for i in range(encode_iter) :
-#         serial_buffer_queue.pop3()
+    ## for b64 queue
+    # pop 3 byte inside buffer then convert them to 4 base64 char s.  
+    # then save 4 base64 chars to base64 buffer.
+    main_len = len(serial_buffer_queue.mainstring)
+    while (main_len >= 3) :
+        main_len = len(serial_buffer_queue.mainstring)
+        serial_buffer_queue.pop3()
 
-#     # ### for bin queue
-#     # # pop all byte then convert them into the bin form.
-#     # serial_buffer_queue.pop()
+    # ### for bin queue
+    # # pop all byte then convert them into the bin form.
+    # serial_buffer_queue.pop()
 
 
 

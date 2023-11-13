@@ -102,36 +102,35 @@ char peek_queue(Queue *q, unsigned short index) {
 }
 
 
-
 // // 
 
 
 
-// // // EEPROM
-// void saveEEPROM() {
-//     const char size = 8;
-//     short divideId;
-//     short offsetId;
-//     short isSavedId;
-//     char* divideByteArray;
-//     char* offsetByteArray;
+// // EEPROM
+void saveEEPROM() {
+    const char size = 8;
+    short divideId;
+    short offsetId;
+    short isSavedId;
+    char* divideByteArray;
+    char* offsetByteArray;
 
-//     float loadcell_divide[3] = {loadcell_divide_0,loa_______;
-//       float floatVal;        
-//     } b64_float ;
+    float loadcell_divide[3] = {loadcell_divide_0,loa_______;
+      float floatVal;        
+    } b64_float ;
 
-//     //get the 4-bit float data, then reverse them. (endian change)
-//     b64_float.floatVal = floatNum;
-//     unsigned char Flipped_arr[4] = {"\0"};
-//     for (char i=0; i<4; i++)
-//     {
-//         Flipped_arr[3 - i] = b64_float.intVal[i];
-//     }
+    //get the 4-bit float data, then reverse them. (endian change)
+    b64_float.floatVal = floatNum;
+    unsigned char Flipped_arr[4] = {"\0"};
+    for (char i=0; i<4; i++)
+    {
+        Flipped_arr[3 - i] = b64_float.intVal[i];
+    }
 
-//     //convert byte format to base64 format.
-//     encode_base64(Flipped_arr, 4, base64);
+    //convert byte format to base64 format.
+    encode_base64(Flipped_arr, 4, base64);
 
-// }
+}
 
 // base64DecodeFloat
 // change base64 encoding value to equivalent float. 
@@ -164,7 +163,8 @@ float base64DecodeFloat(unsigned char base64[7]) {
 
 // get base64ToByte() parameter byteArr's proper length.
 unsigned int base64ToByte_getlength(int base64Len) {
-    return (base64Len + 4 - (base64Len % 4)) * 3 / 4;
+    unsigned short compensate = 4 - (base64Len % 4);
+    return (base64Len + compensate) * 3 / 4;
 }
 
 //change base64 encoded ascii string to serial sendable byte list form

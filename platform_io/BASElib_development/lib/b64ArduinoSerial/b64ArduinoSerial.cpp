@@ -2,8 +2,15 @@
 #include "b64ArduinoSerial.h"
 #include "string.h"
 #include "math.h"
+#include "EEPROM.h"
 
 /// debuging functions region
+
+BASE64 B64HANDLE = BASE64("",0);
+
+ManageEEPROM EEPROMHANDLE;
+
+Hex8Float HEX8FLOATHANDLE;
 
 
 void byteArrSimplePrint(uint8_t byteArr[], int len ) {
@@ -79,18 +86,7 @@ char b64ByteToAsciiSymbol(uint8_t b64_char) {
 }
 
 
-void flipArray(uint8_t arr[], int length) {
-  uint8_t byte_storage = 0x00;
-  int reverse_index = length - 1;
-  int index = 0;
-  while (index < reverse_index) {
-    byte_storage = arr[reverse_index];
-    arr[reverse_index] = arr[index];
-    arr[index] = byte_storage;
-    reverse_index--;
-    index++;
-  }
-}
+
 
 
 /// end of region
@@ -101,10 +97,10 @@ void BASE64::_fault_control() {
   // exception handles
   _len = -1;
   _byteArrLen = -1;
-  free(_byteArr);
+  free((void*) _byteArr);
   _byteArr = NULL;
   _ending = -1;
-  _ending_position = -1;
+  _ending_position = -10;
   _stored_length = -1;
 }
 
@@ -166,15 +162,11 @@ BASE64::BASE64(const char ascii_string[], unsigned int b64_length) {
     _ending_position = byteArr_current_focus;
     byteArr_current_focus--;
   } else {
-    _ending_position = byteArr_current_focus + 1;
+    _ending_position = byteArr_current_focus;
   }
   _stored_length = stored_length;
   _ending = stored_bits;
-  // exhaust the left byteArr_current_focus until zero, filing 0x00 for each iteration.
-  while (byteArr_current_focus >= 0) {
-    _byteArr[byteArr_current_focus] = 0x00;
-    byteArr_current_focus--;
-  }
+
 }
 
 
@@ -183,7 +175,7 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
   // re-calculate the byteArrLen, and move pointer to the temporary variable
   _len += extender_length;
   int byteArrLenBefore = _byteArrLen;
-  uint8_t *byteArrBefore =_byteArr;
+  volatile uint8_t *byteArrBefore =_byteArr;
 
   const int base64_byte_div = _len * 6 / 8;
   if ((_len * 6 % 8) != 0) {
@@ -199,6 +191,7 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
   // put the byteArrBefore to the _byteArr. however, the ending byte will not applied.
   int byteArr_past_focus = byteArrLenBefore - 1;
   int byteArr_current_focus = _byteArrLen - 1;
+
   for (int i = 0; i < byteArrLenBefore - _ending_position - 1; i++) {
     _byteArr[byteArr_current_focus] = byteArrBefore[byteArr_past_focus];
     byteArr_current_focus--;
@@ -216,7 +209,7 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
   // debugLineBreak() ;
 
   // free the array before
-  free(byteArrBefore);
+  free((void*) byteArrBefore);
 
   int stored_length = _stored_length;
   for (unsigned int i = 0; i < extender_length; i++) {
@@ -258,7 +251,7 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
     _ending_position = byteArr_current_focus;
     byteArr_current_focus--;
   } else {
-    _ending_position = byteArr_current_focus + 1;
+    _ending_position = byteArr_current_focus;
   }
   _stored_length = stored_length;
   _ending = stored_bits;
@@ -287,7 +280,7 @@ void BASE64::extend_float(float number) {
   // re-calculate the byteArrLen, and move pointer to the temporary variable
   _len += 6;
   int byteArrLenBefore = _byteArrLen;
-  uint8_t *byteArrBefore =_byteArr;
+  volatile uint8_t *byteArrBefore =_byteArr;
 
   const int base64_byte_div = _len * 6 / 8;
   if ((_len * 6 % 8) != 0) {
@@ -311,7 +304,7 @@ void BASE64::extend_float(float number) {
   // free the byteArrBefore.
   // append the float bytes.
   uint8_t stored_bits = byteArrBefore[byteArr_past_focus];
-  free(byteArrBefore);
+  free((void*) byteArrBefore);
 
   for (unsigned int i = 0; i < 4; i++) {
     const uint8_t target_byte = b64_float.byte_arr[i];
@@ -348,7 +341,7 @@ void BASE64::extend_float(float number) {
     _ending_position = byteArr_current_focus;
     byteArr_current_focus--;
   } else {
-    _ending_position = byteArr_current_focus + 1;
+    _ending_position = byteArr_current_focus;
   }
   _ending = stored_bits;
 
@@ -359,6 +352,18 @@ void BASE64::extend_float(float number) {
   }
 }
 
+void flipArray(volatile uint8_t arr[], int length) {
+  uint8_t byte_storage = 0x00;
+  int reverse_index = length - 1;
+  int index = 0;
+  while (index < reverse_index) {
+    byte_storage = arr[reverse_index];
+    arr[reverse_index] = arr[index];
+    arr[index] = byte_storage;
+    reverse_index--;
+    index++;
+  }
+}
 
 // write _byteArr then deactivate this BASE64 object.
 void BASE64::serial_exhaust_bytes() {
@@ -369,11 +374,12 @@ void BASE64::serial_exhaust_bytes() {
 
 // Serial.println the _byteArr to the bit 0-1 string
 void BASE64::debug_byteArr() {
+  Serial.println(b64_symbolize());
   Serial.println();
   Serial.println("||DEBUG||");
   debugConsole("_len",String(_len));
   debugConsole("_byteArrLen",String(_byteArrLen));
-  byteArrSimplePrint(_byteArr, _byteArrLen);
+  byteArrSimplePrint((uint8_t*) _byteArr, _byteArrLen);
   Serial.println("||spec||");
   debugConsole("_ending",String(_ending, BIN));
   debugConsole("_ending_position",String(_ending_position));
@@ -409,3 +415,267 @@ String BASE64::b64_symbolize() {
   return result;
 }
 
+uint8_t hexCharToInt(char hex) {
+  const char table[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd' ,'e' ,'f'};
+  for (int i = 0; i < 16; i++) {
+    if (hex == table[i]) {
+      return i;
+    }
+  }
+  return 16;
+}
+
+float Hex8Float::next(char hex) {
+  if (_pos > 3) {
+    _pos = 0;
+    return byte_float.number;
+  }
+
+  if (is_no_stored) {
+    _hex_head = hex;
+  } else {
+    is_no_stored = false;
+    const uint8_t head_4bit = hexCharToInt(_hex_head);
+    const uint8_t tail_4bit = hexCharToInt(hex);
+    byte_float.byte_arr[_pos] = head_4bit * 16 + tail_4bit;
+    _pos++;
+  }
+
+  return 0.0/0.0;
+}
+
+void ManageEEPROM::clear() {
+  for (int i = 0 ; i < 64 ; i++) {
+    EEPROM.write(i, 0);
+  }
+}
+
+
+void ManageEEPROM::assign_string(uint8_t main_key, uint8_t sub_key , const char string[], uint8_t length) {
+  
+  // store the size of the data in the first 0~63 location
+  const int key = sub_key + main_key * 8;
+  EEPROM.write(key, length);
+  
+  // count the accumulated byte length
+  int key_sum = 0;
+  for (int i = 0; i < key; i++) {
+    key_sum += EEPROM.read(i);
+  }
+
+  for (int i = 0; i < length; i++) {
+    const int idx = _core_offset + key_sum + i;
+    EEPROM.write(idx, string[i]);
+  }
+
+}
+
+void ManageEEPROM::get_string(uint8_t main_key, uint8_t sub_key , char string[]) {
+  // get the stored value size
+  const int key = sub_key + main_key * 8;
+  const uint8_t size = EEPROM.read(key);
+  if (size == 0) {
+    return;
+  }
+
+  // count the accumulated byte length
+  int key_sum = 0;
+  for (int i = 0; i < key; i++) {
+    key_sum += EEPROM.read(i);
+  }
+
+  // retrieve the each byte then store in the string array.
+  for (int i = 0; i < size; i++) {
+    const int idx = _core_offset + key_sum + i ;
+    string[i] = EEPROM.read(idx);
+  }
+}
+
+void ManageEEPROM::assign_float(uint8_t main_key, uint8_t sub_key , float number) {
+  // store the size of the data in the first 0~63 location
+  const int key = sub_key + main_key * 8;
+  EEPROM.write(key, 4);
+  
+  // count the accumulated byte length
+  int key_sum = 0;
+  for (int i = 0; i < key; i++) {
+    key_sum += EEPROM.read(i);
+  }
+
+  // get byte from union
+  union float_b64 { // warning : byte ordering is little-endian!
+    uint8_t byte_arr[4];
+    float number;
+  } b64_float;
+  b64_float.number = number;
+
+
+  for (int i = 0; i < 4; i++) {
+    const int idx = _core_offset + key_sum + i;
+    EEPROM.write(idx, b64_float.byte_arr[i]);
+  }
+}
+
+float ManageEEPROM::get_float(uint8_t main_key, uint8_t sub_key) {
+  // get the stored value size
+  const int key = sub_key + main_key * 8;
+  const uint8_t size = EEPROM.read(key);
+  if (size == 0) {
+    return 0.0/0.0;
+  }
+
+  // count the accumulated byte length
+  int key_sum = 0;
+  for (int i = 0; i < key; i++) {
+    key_sum += EEPROM.read(i);
+  }
+
+  // retrieve the each byte then store in the union array.
+  union float_b64 { // warning : byte ordering is little-endian!
+    uint8_t byte_arr[4];
+    float number;
+  } b64_float;
+
+  for (int i = 0; i < 4; i++) {
+    const int idx = _core_offset + key_sum + i ;
+    b64_float.byte_arr[i] = EEPROM.read(idx);
+  }
+
+  return b64_float.number;
+}
+
+
+
+// start the serial, and then set the constants.
+// note : you should put the device_code, com_rule 's length = 4.
+BGSerialCommunication_scottish::BGSerialCommunication_scottish(const char device_code[5], const char id[7], const char com_rule[5],
+    const uint8_t main_id_arr[], const uint8_t sub_id_arr[], const uint8_t length) {
+  // build the complete ping code
+  strncat(_ping_string, device_code, 4);
+  strncat(_ping_string, "++", 2);
+  strncat(_ping_string, id, 6);
+  strncat(_ping_string, "++", 2);
+  strncat(_ping_string, com_rule, 4);
+  strncat(_ping_string, "++//", 4);
+
+  _main_id_arr = main_id_arr;
+  _sub_id_arr = sub_id_arr;
+  _pref_length = length;
+}
+
+void BGSerialCommunication_scottish::setup() {
+  Serial.begin(9600);
+}
+
+
+// send the ping sign through the serial.
+void BGSerialCommunication_scottish::p() {
+  // build the base64, burn it, remove it.
+  B64HANDLE = BASE64(_ping_string,24);
+  B64HANDLE.serial_exhaust_bytes();
+}
+
+// send the float array values through the serial.
+void BGSerialCommunication_scottish::r(const float sensor_value_array[], const int length) {
+  // determine if the length is odd or even
+  bool is_not_div_by_4;
+  const int count = 8 * (length + 1) - 2;
+  if (count % 4 == 0) {
+    // you have to use "...++++//"
+    is_not_div_by_4 = true;
+  } else {
+    // you have to use "...++//"
+    is_not_div_by_4 = false;
+  }
+
+  B64HANDLE = BASE64("//",2);
+  
+  for (int i = 0; i < length; i++) {
+    const float target_value = sensor_value_array[i];
+    B64HANDLE.extend_float(target_value);
+    B64HANDLE.extend("++",2);
+  }
+
+  if (is_not_div_by_4) {
+    B64HANDLE.extend("++//", 4);
+  } else {
+    B64HANDLE.extend("//",2);
+  }
+  // build the base64, burn it, remove it.
+  B64HANDLE.serial_exhaust_bytes();
+  // B64HANDLE.debug_byteArr();
+}
+
+void BGSerialCommunication_scottish::s() {
+  // load the data from EEPROM
+  float* stored_float_arr = (float *)malloc(sizeof(float) * _pref_length);
+  for (int i = 0; i < _pref_length; i++) {
+    stored_float_arr[i] = EEPROMHANDLE.get_float(_main_id_arr[i], _sub_id_arr[i]);
+  }
+
+  r(stored_float_arr, _pref_length);
+}
+
+void BGSerialCommunication_scottish::S(const float const_value_array[]) {
+  for (int i = 0; i < _pref_length; i++) {
+    EEPROMHANDLE.assign_float(_main_id_arr[i], _sub_id_arr[i], const_value_array[i]);
+  }
+
+  B64HANDLE = BASE64("//SS++//", 8);
+  B64HANDLE.serial_exhaust_bytes(); 
+}
+
+void BGSerialCommunication_scottish::loop(const float sensor_value_array[], const int length) {
+  if (Serial.available() == 0) {
+    if (_is_R_fired == false && _is_S_fired == false) {
+      return;
+    } else if (_is_R_fired) {
+      // work the fired R 
+      r(sensor_value_array, length);
+      return;
+    }
+  }
+
+  const char command_char = Serial.read();
+
+  if (_is_R_fired == false && _is_S_fired == false) {
+    // simple command (p, r, s) case + R, S initial detection
+    if (command_char == 'p') {
+      p();
+    } else if (command_char == 'r') {
+      r(sensor_value_array, length);
+    } else if (command_char == 's') {
+      s();
+    } else if (command_char == 'R') {
+      _is_R_fired = true;
+      return;
+    } else if (command_char == 'S') {
+      _is_S_fired = true;
+      return;
+    }
+  } else if (_is_R_fired) {
+    // R fired case
+    // check if command_char is 'X'
+    if (command_char == 'X') {
+      _is_R_fired = false;
+      return;
+    }
+    // work the fired R 
+    r(sensor_value_array, length);
+    return;
+  } else if (_is_S_fired) {
+    // check if command char is ']'
+    if (command_char == ']') {
+      S(_S_float_param);
+      _S_float_param_count = 0;
+      _is_S_fired = false;
+      return;
+    } else if (command_char != '[') {
+      const float result = HEX8FLOATHANDLE.next(command_char);
+      if (isnan(result) != 0) {
+        _S_float_param[_S_float_param_count] = result;
+        _S_float_param_count++;
+      }
+    }
+  }
+}

@@ -1,35 +1,19 @@
 #include <Arduino.h>
 #include <b64ArduinoSerial.h>
 #include <string.h>
-
-void DEBUG() {
-  BASE64 base64 = BASE64("",0);
-  // BASE64 base64 = BASE64("asdfgz",6);
-  // base64.debug_byteArr();
-  // Serial.println(base64.b64_symbolize());
-
-  base64.extend_float(1.111);
-  // base64.extend("AAAAA",6);
-  Serial.println(base64.b64_symbolize());
-  base64.debug_byteArr();
-
-  // base64.serial_exhaust_bytes();
-
-  // Serial.println("hello, world!");
+#include <EEPROM.h>
 
 
-}
+const uint8_t main_id_arr[] = {0};
+const uint8_t sub_id_arr[] = {0};
+const float tester[] = {1.11, 2.22, 3.33};
+BGSerialCommunication_scottish BGSerial = BGSerialCommunication_scottish(
+  "BH01", "random", "BGst", main_id_arr, sub_id_arr, 1);
 
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);
-  // Serial.println("hello, fuck you!");
-  DEBUG();
-
+  BGSerial.setup();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  BGSerial.loop(tester, 3);
 }
-
-// put function definitions here:
