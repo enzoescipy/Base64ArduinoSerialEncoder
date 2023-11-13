@@ -367,7 +367,7 @@ void flipArray(volatile uint8_t arr[], int length) {
 // write _byteArr then deactivate this BASE64 object.
 void BASE64::serial_exhaust_bytes() {
   flipArray(_byteArr, _byteArrLen);
-  Serial.write((char*) _byteArr);
+  Serial.write((char*) _byteArr, _byteArrLen) ;
   _fault_control();
 }
 
