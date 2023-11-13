@@ -71,7 +71,7 @@ class SerialQueueBIN:
 
     
 
-def base64DecodeFloatDebug(b64):
+def base64DecodeFloatDebug(b64) :
     # validation of param, which base64 must have the 6-letter.
     if len(b64) != 6 or type(b64) != type(''):
         return -1
@@ -86,16 +86,14 @@ def base64DecodeFloatDebug(b64):
 
 
 py_serial = serial.Serial(port='COM7', baudrate=9600,)
-
-
 serial_buffer_queue = SerialQueueB64(on_decode=print)
-# serial_buffer_queue = SerialQueueBIN(on_decode=print)
 
-
+base64DecodeFloatDebug("7Rhj/A")
 
 # code firing section
 
-code=b'r'
+# code=b'S[3f8e147b]'
+code=b'R'
 print(code)
 
 time.sleep(2)
@@ -103,7 +101,13 @@ time.sleep(2)
 py_serial.write(code)
 time.sleep(1) 
 
+code=b'X'
+print(code)
 
+time.sleep(2)
+# print("original_code" ,code)
+py_serial.write(code)
+time.sleep(1) 
 
 while True:
     # time.sleep(0.5)

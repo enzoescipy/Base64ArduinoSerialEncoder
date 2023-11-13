@@ -425,20 +425,25 @@ uint8_t hexCharToInt(char hex) {
 }
 
 float Hex8Float::next(char hex) {
-  if (_pos > 3) {
-    _pos = 0;
-    return byte_float.number;
-  }
+  // if (_pos > 3) {
+  //   _pos = 0;
+  //   return byte_float.number;
+  // }
 
-  if (is_no_stored) {
+  if (_is_no_stored) {
     _hex_head = hex;
+    _is_no_stored = false;
   } else {
-    is_no_stored = false;
+    _is_no_stored = true;
     const uint8_t head_4bit = hexCharToInt(_hex_head);
     const uint8_t tail_4bit = hexCharToInt(hex);
-    byte_float.byte_arr[_pos] = head_4bit * 16 + tail_4bit;
+    byte_float.byte_arr[3 - _pos] = head_4bit * 16 + tail_4bit;
     _pos++;
+    if (_pos >= 4 ) {
+      return byte_float.number; 
+    }
   }
+
 
   return 0.0/0.0;
 }
@@ -669,9 +674,22 @@ void BGSerialCommunication_scottish::loop(const float sensor_value_array[], cons
       _S_float_param_count = 0;
       _is_S_fired = false;
       return;
-    } else if (command_char != '[') {
+    } else  {
+      // check if the command char is hex representation
+      const char hex_table[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd' ,'e' ,'f'};
+      bool is_hex = false;
+      for (int i = 0; i < 16; i++) {
+        if (hex_table[i] == command_char) {
+          is_hex = true;
+          break;
+        }
+      }
+      if (is_hex == false) {
+        return;
+      }
+      
       const float result = HEX8FLOATHANDLE.next(command_char);
-      if (isnan(result) != 0) {
+      if (isnan(result) == 0) {
         _S_float_param[_S_float_param_count] = result;
         _S_float_param_count++;
       }

@@ -19,7 +19,14 @@ void clear_EEPROM() {
   Serial.println("clear done!");
 }
 
+void debug() {
+  Serial.begin(9600);
+  ManageEEPROM manageEEPROM;
+  Serial.println(manageEEPROM.get_float(0,0) + 0.0);
+}
+
 void setup() {
+  // debug();
   // clear_EEPROM();
   BGSerial.setup();
 }

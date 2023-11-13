@@ -37,7 +37,7 @@ class Hex8Float {
     float next(char hex);
   private:
     // temp storage for 2 hex binding
-    bool is_no_stored = false;
+    bool _is_no_stored = true;
     char _hex_head;
 
     // union for getting the float value
