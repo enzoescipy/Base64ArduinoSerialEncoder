@@ -206,7 +206,6 @@ void BASE64::extend(const char extender[], unsigned int extender_length) {
   uint8_t stored_bits = byteArrBefore[byteArr_past_focus];
   // byteArr_current_focus--;
 
-  // debugLineBreak() ;
 
   // free the array before
   free((void*) byteArrBefore);
